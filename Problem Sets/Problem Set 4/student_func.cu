@@ -51,4 +51,45 @@ void your_sort(unsigned int* const d_inputVals,
 { 
   //TODO
   //PUT YOUR SORT HERE
+  
+  int threads_per_block = 512;
+    int num_blocks = ceil( float(num_elems) /threads_per_block );
+    
+    unsigned int h_temp[num_elems];  
+    unsigned int *d_map_out_group_0;
+    unsigned int *d_map_out_group_1;
+    
+    unsigned int *d_scan_values;
+    unsigned int *d_temp0;
+    unsigned int *d_temp1;
+    unsigned int *d_sum_results;
+    unsigned int *d_sort_addresses;
+    
+    for( int i = 1; i <= 4; i <<= 1){
+        map_kernel<<<num_blocks, threads_per_block>>>(d_outputVals, d_map_out_group_0, numElems, i, 0);
+        map_kernel<<<num_blocks, threads_per_block>>>(d_outputVals, d_map_out_group_1, numElems, i, 1);
+        
+        scan_kernel<<<num_blocks, threads_per_block>>>(d_map_out_group_0, d_scan_values, d_temp, d_sum_results, numElems);
+        sum_scan_kernel<<<num_blocks, threads_per_block>>>(d_scan_values, d_sum_results, numElems);
+
+        unsigned int addr;
+        addr++;
+        printf("Addr: %u \n", addr);
+        printf("i: %u \n", i);
+        
+        scan_kernel<<<num_blocks, threads_per_block>>>(d_map_out_group_1, d_scan_values, d_sum_results, numElems);
+        sum_scan_kernel<<<num_blocks, threads_per_block>>>(d_scan_values, d_sum_results, numElems);
+        
+        cudaDeviceSynchronize();
+        
+        map_add_kernel<<<num_blocks, threads_per_block>>>(d_scan_values, d_sort_addresses, d_map_out_group_1, numElems, addr);
+        
+        resort_addresses<<<num_blocks, threads_per_block>>>(d_outputVals, d_outputPos, d_sort_addresses, d_temp0, d_temp1, numElems, 0);
+        resort_addresses<<<num_blocks, threads_per_block>>>(d_outputVals, d_outputPos, d_sort_addresses, d_temp0, d_temp1, numElems, 1);
+        
+        
+        
+        
+        
+        
 }
